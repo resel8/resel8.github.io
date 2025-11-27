@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ongkir PST</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Leaflet CSS & JS (Untuk Peta) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <!-- Font Awesome untuk Ikon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        #map {
+            height: 480px;
+            width: 100%;
+            z-index: 0;
+        }
+        .autocomplete-items {
+            position: absolute;
+            border: 1px solid #d4d4d4;
+            border-bottom: none;
+            border-top: none;
+            z-index: 99;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background-color: white;
+            border-radius: 0 0 0.5rem 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .autocomplete-items div {
+            padding: 10px;
+            cursor: pointer;
+            background-color: #fff;
+            border-bottom: 1px solid #d4d4d4;
+        }
+        .autocomplete-items div:hover {
+            background-color: #e9e9e9;
+        }
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 3px solid #3b82f6;
+            width: 20px;
+            height: 20px;
+            -webkit-animation: spin 1s linear infinite; /* Safari */
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="container mx-auto p-4 max-w-6xl">
+        
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-blue-800 mb-2"><i class="fas fa-shipping-fast mr-2"></i>Cek Ongkir Armada Internal</h1>
+            <p class="text-gray-600 text-sm">Sistem Perhitungan Perkiraan Biaya Pengiriman Armada Internal PST Jakarta</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Form Section -->
+            <div class="bg-white p-6 rounded-xl shadow-lg lg:col-span-1 h-fit border border-gray-100">
+                
+                <!-- Pilih Armada -->
+                <div class="mb-6 bg-blue-50 p-4 rounded-lg border border-blue-100">
+                    <label class="block text-xs font-bold text-blue-800 uppercase mb-2">Pilih Armada</label>
+                    <select id="fleet-select" onchange="updateFleetInfo()" class="block w-full p-2.5 text-sm text-gray-900 bg-white rounded-lg border border-blue-300 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="" disabled selected>-- Pilih Nomor Polisi --</option>
+                        <!-- Options akan diisi via JS -->
+                    </select>
+                    
+                    <!-- Info Armada -->
+                    <div id="fleet-info-box" class="mt-3 grid grid-cols-3 gap-2 hidden">
+                        <div class="bg-white p-2 rounded border border-blue-200 text-center">
+                            <p class="text-[10px] text-gray-500 uppercase">Rasio BBM</p>
+                            <p class="text-xs font-bold text-blue-700" id="info-ratio">-</p>
+                        </div>
+                        <div class="bg-white p-2 rounded border border-blue-200 text-center">
+                            <p class="text-[10px] text-gray-500 uppercase">Gol. Tol</p>
+                            <p class="text-xs font-bold text-blue-700" id="info-gol">-</p>
+                        </div>
+                        <div class="bg-white p-2 rounded border border-blue-200 text-center">
+                            <p class="text-[10px] text-gray-500 uppercase">Lembur</p>
+                            <p class="text-xs font-bold text-blue-700" id="info-overtime">-</p>
+                        </div>
+                    </div>
+                </div>
+
+                <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-gray-700">Rute & Biaya</h2>
+                
+                <!-- Input Asal -->
+                <div class="mb-4 relative">
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Lokasi Asal</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-map-marker-alt text-green-600"></i>
+                        </div>
+                        <input type="text" id="origin-input" class="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 border p-2.5 text-sm" placeholder="Ketik kota asal..." autocomplete="off">
+                        <div id="origin-list" class="autocomplete-items hidden text-sm"></div>
+                    </div>
+                    <input type="hidden" id="origin-coords">
+                </div>
+
+                <!-- Input Tujuan -->
+                <div class="mb-5 relative">
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Lokasi Tujuan</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-map-pin text-red-600"></i>
+                        </div>
+                        <input type="text" id="dest-input" class="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 border p-2.5 text-sm" placeholder="Ketik kota tujuan..." autocomplete="off">
+                        <div id="dest-list" class="autocomplete-items hidden text-sm"></div>
+                    </div>
+                    <input type="hidden" id="dest-coords">
+                </div>
+
+                <!-- Section Biaya -->
+                <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
+                    
+                    <!-- Harga Solar Fixed -->
+                    <div class="flex justify-between items-center mb-4 border-b border-gray-200 pb-2">
+                         <label class="block text-xs font-medium text-gray-600">Harga Solar (Tetap)</label>
+                         <span class="text-sm font-bold text-gray-800">Rp 6.800 <span class="text-xs font-normal text-gray-500">/L</span></span>
+                    </div>
+
+                    <!-- Input Tol Manual -->
+                    <div class="mb-4">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Biaya Tol (Satu Arah)</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <span class="text-gray-500 text-xs font-bold">Rp</span>
+                            </div>
+                            <input type="number" id="toll-total" class="pl-8 block w-full rounded border-gray-300 border p-2 text-sm bg-white" placeholder="0">
+                        </div>
+                        <p class="text-[10px] text-gray-400 mt-1 text-right">*Masukkan 0 jika lewat jalur non-tol</p>
+                    </div>
+
+                     <!-- Checkbox Opsi -->
+                     <div class="space-y-3 pt-2 border-t border-gray-200">
+                        <!-- Lembur -->
+                        <div class="flex items-center justify-between">
+                            <label class="flex items-center space-x-2 cursor-pointer select-none">
+                                <input type="checkbox" id="include-overtime" class="rounded text-blue-600 focus:ring-blue-500 h-4 w-4" checked>
+                                <span class="text-sm font-medium text-gray-700">Hitung Biaya Lembur?</span>
+                            </label>
+                        </div>
+                        
+                        <!-- Pulang Pergi -->
+                        <div class="flex items-center justify-between">
+                            <label class="flex items-center space-x-2 cursor-pointer select-none">
+                                <input type="checkbox" id="round-trip" class="rounded text-blue-600 focus:ring-blue-500 h-4 w-4">
+                                <span class="text-sm font-medium text-gray-700">Pulang Pergi (PP)?</span>
+                            </label>
+                            <span class="text-[10px] bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded border border-yellow-200 font-bold">x2 Jarak</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tombol Hitung -->
+                <button onclick="calculateCost()" id="btn-calculate" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-3 px-4 rounded-lg transition duration-200 flex justify-center items-center gap-2 shadow-md text-sm uppercase tracking-wide">
+                    <span>Hitung Estimasi</span>
+                </button>
+                <div id="error-msg" class="text-red-500 text-xs mt-2 hidden text-center bg-red-50 p-2 rounded border border-red-100"></div>
+            </div>
+
+            <!-- Map & Result Section -->
+            <div class="lg:col-span-2 flex flex-col gap-4">
+                
+                <!-- Map Container -->
+                <div class="bg-white p-2 rounded-xl shadow-md border border-gray-200 flex-grow relative">
+                    <div id="map" class="rounded-lg h-full min-h-[300px]"></div>
+                    <!-- Legend -->
+                    <div class="absolute bottom-6 left-6 bg-white/90 p-2 rounded shadow text-xs z-[400] border border-gray-200">
+                        <div class="flex items-center gap-2 mb-1"><div class="w-3 h-3 rounded-full bg-green-600 border border-white shadow-sm"></div> Asal</div>
+                        <div class="flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-red-600 border border-white shadow-sm"></div> Tujuan</div>
+                    </div>
+                </div>
+
+                <!-- Results Card -->
+                <div id="result-card" class="bg-white rounded-xl shadow-lg border-l-8 border-blue-600 hidden animate-fade-in-up overflow-hidden">
+                    <div class="p-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
+                        <div>
+                            <h3 class="text-base font-bold text-gray-800">Rincian Perjalanan & Biaya</h3>
+                            <p class="text-xs text-gray-500" id="res-fleet-name">-</p>
+                        </div>
+                        <span class="text-xs text-gray-500 bg-white px-2 py-1 rounded border" id="trip-type-label">Estimasi Satu Kali Jalan</span>
+                    </div>
+                    
+                    <div class="p-6">
+                        <!-- Informasi Perjalanan (Atas) -->
+                        <div class="grid grid-cols-2 gap-4 mb-6 border-b border-gray-100 pb-4">
+                            <!-- Jarak -->
+                            <div class="text-center sm:text-left">
+                                <p class="text-xs text-gray-500 uppercase font-semibold tracking-wider">Jarak Tempuh</p>
+                                <p class="text-2xl font-bold text-gray-800" id="res-distance">0 km</p>
+                            </div>
+                            <!-- Waktu -->
+                            <div class="text-center sm:text-right">
+                                <p class="text-xs text-gray-500 uppercase font-semibold tracking-wider">Estimasi Waktu</p>
+                                <p class="text-2xl font-bold text-blue-800" id="res-duration">-</p>
+                                <p class="text-[10px] text-gray-400">Kondisi lalu lintas normal</p>
+                            </div>
+                        </div>
+
+                        <!-- Grid Rincian Biaya (Bawah) -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                            
+                            <!-- Biaya BBM -->
+                            <div class="p-3 bg-orange-50 rounded border border-orange-100">
+                                <p class="text-xs text-orange-600 uppercase font-bold mb-1">Biaya Solar (Rp 6.800/L)</p>
+                                <p class="text-lg font-bold text-orange-700" id="res-fuel-cost">Rp 0</p>
+                                <div class="text-[10px] text-orange-500 mt-1 flex justify-between">
+                                    <span>Vol: <span id="res-fuel-vol">0</span> L</span>
+                                    <span id="res-fuel-ratio-info">(Ratio)</span>
+                                </div>
+                            </div>
+
+                            <!-- Biaya Tol -->
+                            <div class="p-3 bg-blue-50 rounded border border-blue-100">
+                                <p class="text-xs text-blue-600 uppercase font-bold mb-1">Biaya Tol</p>
+                                <p class="text-lg font-bold text-blue-700" id="res-toll-cost">Rp 0</p>
+                                <p class="text-[10px] text-blue-500 mt-1" id="res-toll-class">Golongan -</p>
+                            </div>
+
+                            <!-- Biaya Lembur -->
+                            <div class="p-3 bg-purple-50 rounded border border-purple-100">
+                                <p class="text-xs text-purple-600 uppercase font-bold mb-1">Biaya Lembur</p>
+                                <p class="text-lg font-bold text-purple-700" id="res-overtime-cost">Rp 0</p>
+                                <p class="text-[10px] text-purple-500 mt-1" id="res-overtime-status">Aktif</p>
+                            </div>
+                        </div>
+
+                        <!-- Info Gerbang Tol -->
+                        <div id="toll-gate-info" class="bg-gray-100 rounded border border-gray-200 p-3 mb-4 text-sm hidden">
+                            <p class="text-xs font-bold text-gray-700 uppercase mb-2"><i class="fas fa-road mr-1"></i> Jalur Tol Terdeteksi (Satu Arah)</p>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                <div class="flex items-center justify-between bg-white p-2 rounded border border-gray-200">
+                                    <span class="text-gray-500 text-xs">Masuk via:</span>
+                                    <span class="font-semibold text-gray-700 text-xs text-right" id="gate-entry">-</span>
+                                </div>
+                                <div class="flex items-center justify-between bg-white p-2 rounded border border-gray-200">
+                                    <span class="text-gray-500 text-xs">Keluar via:</span>
+                                    <span class="font-semibold text-gray-700 text-xs text-right" id="gate-exit">-</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Total Row -->
+                        <div class="p-4 bg-green-50 rounded border border-green-200 flex justify-between items-center">
+                            <div>
+                                <p class="text-xs text-green-700 uppercase font-bold mb-1">Total Estimasi Biaya</p>
+                                <p class="text-[10px] text-gray-500 hidden sm:block">(Solar + Tol + Lembur)</p>
+                            </div>
+                            <p class="text-3xl font-extrabold text-green-700" id="res-total">Rp 0</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA ARMADA ---
+        const fleets = [
+            { id: 1, plate: "B 9374 PDE", code: "PST 1", ratioDivisor: 2, gol: "Golongan 3", overtime: 450000 },
+            { id: 2, plate: "B 9963 PDE", code: "PST 2", ratioDivisor: 6, gol: "Golongan 2", overtime: 250000 },
+            { id: 3, plate: "B 9098 PDF", code: "PST 3", ratioDivisor: 6, gol: "Golongan 2", overtime: 250000 },
+            { id: 4, plate: "B 9981 PDE", code: "PST 4", ratioDivisor: 2, gol: "Golongan 2", overtime: 250000 },
+            { id: 5, plate: "B 9169 PDF", code: "PST 5", ratioDivisor: 2, gol: "Golongan 2", overtime: 250000 },
+            { id: 6, plate: "B 9201 PEA", code: "PST 6", ratioDivisor: 2, gol: "Golongan 5", overtime: 450000 }
+        ];
+
+        const FIXED_FUEL_PRICE = 6800;
+
+        // --- Init Fleet Dropdown ---
+        const selectEl = document.getElementById('fleet-select');
+        fleets.forEach((fleet, index) => {
+            const option = document.createElement('option');
+            option.value = index; 
+            option.textContent = `${fleet.plate} (${fleet.code})`;
+            selectEl.appendChild(option);
+        });
+
+        let selectedFleet = null;
+
+        function updateFleetInfo() {
+            const index = selectEl.value;
+            if (index === "") return;
+
+            selectedFleet = fleets[index];
+            
+            document.getElementById('fleet-info-box').classList.remove('hidden');
+            document.getElementById('info-ratio').textContent = `1 L : ${selectedFleet.ratioDivisor} KM`;
+            document.getElementById('info-gol').textContent = selectedFleet.gol;
+            
+            // Format Overtime Cost
+            const formattedOvertime = "Rp " + (selectedFleet.overtime / 1000) + "rb";
+            document.getElementById('info-overtime').textContent = formattedOvertime;
+        }
+
+        // --- Konfigurasi Map Leaflet ---
+        const map = L.map('map').setView([-2.5489, 118.0149], 5);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        let routeLayer = null;
+        let originMarker = null;
+        let destMarker = null;
+
+        // Custom Icons
+        const originIcon = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+        });
+
+        const destIcon = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+        });
+
+        // --- Fungsi Pencarian Lokasi (Nominatim) ---
+        let debounceTimer;
+        function setupAutocomplete(inputId, listId, coordsId, isOrigin) {
+            const input = document.getElementById(inputId);
+            const list = document.getElementById(listId);
+            const coords = document.getElementById(coordsId);
+
+            input.addEventListener('input', function() {
+                const query = this.value;
+                clearTimeout(debounceTimer);
+                if (!query || query.length < 3) {
+                    list.innerHTML = '';
+                    list.classList.add('hidden');
+                    return;
+                }
+
+                debounceTimer = setTimeout(() => {
+                    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=id&limit=5`)
+                        .then(response => response.json())
+                        .then(data => {
+                            list.innerHTML = '';
+                            if (data.length > 0) {
+                                list.classList.remove('hidden');
+                                data.forEach(item => {
+                                    const div = document.createElement('div');
+                                    div.innerHTML = `<div class="font-semibold text-gray-700 truncate">${item.display_name.split(',')[0]}</div><div class="text-xs text-gray-500 truncate">${item.display_name}</div>`;
+                                    div.addEventListener('click', function() {
+                                        input.value = item.display_name;
+                                        coords.value = `${item.lat},${item.lon}`;
+                                        list.innerHTML = '';
+                                        list.classList.add('hidden');
+                                        updateMarker(item.lat, item.lon, isOrigin);
+                                    });
+                                    list.appendChild(div);
+                                });
+                            } else {
+                                list.classList.add('hidden');
+                            }
+                        })
+                        .catch(err => console.error(err));
+                }, 400);
+            });
+
+            document.addEventListener('click', function(e) {
+                if (e.target !== input) list.classList.add('hidden');
+            });
+        }
+
+        setupAutocomplete('origin-input', 'origin-list', 'origin-coords', true);
+        setupAutocomplete('dest-input', 'dest-list', 'dest-coords', false);
+
+        function updateMarker(lat, lon, isOrigin) {
+            const position = [lat, lon];
+            if (isOrigin) {
+                if (originMarker) map.removeLayer(originMarker);
+                originMarker = L.marker(position, {icon: originIcon}).addTo(map).bindPopup("Asal").openPopup();
+            } else {
+                if (destMarker) map.removeLayer(destMarker);
+                destMarker = L.marker(position, {icon: destIcon}).addTo(map).bindPopup("Tujuan").openPopup();
+            }
+
+            if (originMarker && destMarker) {
+                const group = new L.featureGroup([originMarker, destMarker]);
+                map.fitBounds(group.getBounds().pad(0.1));
+            } else {
+                map.setView(position, 10);
+            }
+            
+            if (routeLayer) {
+                map.removeLayer(routeLayer);
+                routeLayer = null;
+                document.getElementById('result-card').classList.add('hidden');
+            }
+        }
+
+        // --- Logic Perhitungan ---
+        async function calculateCost() {
+            const originVal = document.getElementById('origin-coords').value;
+            const destVal = document.getElementById('dest-coords').value;
+            const tollInput = parseFloat(document.getElementById('toll-total').value) || 0;
+            const useOvertime = document.getElementById('include-overtime').checked;
+            const isRoundTrip = document.getElementById('round-trip').checked; // Check PP Status
+            
+            const btn = document.getElementById('btn-calculate');
+            const errorMsg = document.getElementById('error-msg');
+
+            // Reset UI
+            errorMsg.classList.add('hidden');
+            document.getElementById('result-card').classList.add('hidden');
+            document.getElementById('toll-gate-info').classList.add('hidden');
+
+            // Validasi Input
+            if (!selectedFleet) {
+                errorMsg.textContent = "Mohon pilih armada terlebih dahulu.";
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+
+            if (!originVal || !destVal) {
+                errorMsg.textContent = "Mohon pilih lokasi asal dan tujuan dari daftar.";
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+
+            const originalBtnText = btn.innerHTML;
+            btn.innerHTML = `<div class="loader mr-2"></div> Memproses...`;
+            btn.disabled = true;
+
+            try {
+                const [lat1, lon1] = originVal.split(',');
+                const [lat2, lon2] = destVal.split(',');
+
+                // Request OSRM
+                const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=full&geometries=geojson&steps=true`;
+
+                const response = await fetch(osrmUrl);
+                const data = await response.json();
+
+                if (data.code !== 'Ok') {
+                    throw new Error('Rute tidak ditemukan.');
+                }
+
+                const route = data.routes[0];
+                let distanceKm = route.distance / 1000;
+                let durationSeconds = route.duration;
+                let tollTotal = tollInput;
+
+                // --- LOGIKA PULANG PERGI (PP) ---
+                if (isRoundTrip) {
+                    distanceKm *= 2;        // Jarak x2
+                    durationSeconds *= 2;   // Waktu x2
+                    tollTotal *= 2;         // Biaya Tol x2 (Asumsi input user adalah satu arah)
+                    document.getElementById('trip-type-label').textContent = "Estimasi Pulang Pergi (PP)";
+                } else {
+                    document.getElementById('trip-type-label').textContent = "Estimasi Satu Kali Jalan";
+                }
+
+                // --- INFO GATE ---
+                let entryGate = "-";
+                let exitGate = "-";
+                let foundToll = false;
+
+                if (route.legs && route.legs[0].steps) {
+                    const steps = route.legs[0].steps;
+                    const tollSteps = steps.filter(s => s.name && s.name.toLowerCase().includes('tol'));
+
+                    if (tollSteps.length > 0) {
+                        foundToll = true;
+                        entryGate = tollSteps[0].name;
+                        exitGate = tollSteps[tollSteps.length - 1].name;
+                    }
+                }
+
+                // 1. Hitung BBM (Jarak sudah disesuaikan jika PP)
+                const fuelVolume = distanceKm / selectedFleet.ratioDivisor;
+                const fuelCost = fuelVolume * FIXED_FUEL_PRICE;
+
+                // 2. Biaya Lembur (Tetap sama walaupun PP)
+                const overtimeCost = useOvertime ? selectedFleet.overtime : 0;
+                const overtimeStatus = useOvertime ? "Aktif" : "Tidak Aktif";
+
+                // 3. Format Durasi
+                const hours = Math.floor(durationSeconds / 3600);
+                const minutes = Math.floor((durationSeconds % 3600) / 60);
+                let durationText = "";
+                if (hours > 0) durationText += `${hours} jam `;
+                durationText += `${minutes} menit`;
+
+                // 4. Total
+                const totalCost = fuelCost + tollTotal + overtimeCost;
+
+                // --- UPDATE UI ---
+                document.getElementById('res-fleet-name').textContent = `Armada: ${selectedFleet.plate} (${selectedFleet.code})`;
+                document.getElementById('res-distance').textContent = distanceKm.toLocaleString('id-ID', {maximumFractionDigits: 1}) + " km";
+                document.getElementById('res-duration').textContent = durationText;
+                
+                document.getElementById('res-fuel-vol').textContent = fuelVolume.toLocaleString('id-ID', {maximumFractionDigits: 1});
+                document.getElementById('res-fuel-cost').textContent = "Rp " + fuelCost.toLocaleString('id-ID', {maximumFractionDigits: 0});
+                document.getElementById('res-fuel-ratio-info').textContent = `(Rasio 1:${selectedFleet.ratioDivisor})`;
+
+                document.getElementById('res-toll-cost').textContent = "Rp " + tollTotal.toLocaleString('id-ID', {maximumFractionDigits: 0});
+                document.getElementById('res-toll-class').textContent = selectedFleet.gol;
+                
+                document.getElementById('res-overtime-cost').textContent = "Rp " + overtimeCost.toLocaleString('id-ID', {maximumFractionDigits: 0});
+                document.getElementById('res-overtime-status').textContent = overtimeStatus;
+                
+                document.getElementById('res-total').textContent = "Rp " + totalCost.toLocaleString('id-ID', {maximumFractionDigits: 0});
+
+                // Gate Info
+                if (foundToll) {
+                    document.getElementById('toll-gate-info').classList.remove('hidden');
+                    document.getElementById('gate-entry').textContent = entryGate;
+                    document.getElementById('gate-exit').textContent = exitGate;
+                } else if (tollInput > 0) {
+                    document.getElementById('toll-gate-info').classList.remove('hidden');
+                    document.getElementById('gate-entry').textContent = "Terdeteksi Manual";
+                    document.getElementById('gate-exit').textContent = "Terdeteksi Manual";
+                }
+
+                document.getElementById('result-card').classList.remove('hidden');
+
+                // Gambar Map
+                if (routeLayer) map.removeLayer(routeLayer);
+                const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
+                routeLayer = L.polyline(coords, {
+                    color: '#2563eb',
+                    weight: 5,
+                    opacity: 0.8
+                }).addTo(map);
+
+                map.fitBounds(routeLayer.getBounds().pad(0.1));
+
+            } catch (error) {
+                console.error(error);
+                errorMsg.textContent = "Error: " + error.message;
+                errorMsg.classList.remove('hidden');
+            } finally {
+                btn.innerHTML = originalBtnText;
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
