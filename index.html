@@ -21,7 +21,7 @@
             background-color: #f3f4f6;
         }
         #map {
-            height: 480px;
+            height: 550px;
             width: 100%;
             z-index: 0;
         }
@@ -105,32 +105,48 @@
                     </div>
                 </div>
 
-                <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-gray-700">Rute & Biaya</h2>
+                <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-gray-700">Rute Pengiriman</h2>
                 
-                <!-- Input Asal -->
+                <!-- Input Asal (Dropdown) -->
                 <div class="mb-4 relative">
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Lokasi Asal</label>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Lokasi Asal (Gudang)</label>
                     <div class="relative">
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <i class="fas fa-map-marker-alt text-green-600"></i>
+                            <i class="fas fa-warehouse text-blue-800"></i>
                         </div>
-                        <input type="text" id="origin-input" class="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 border p-2.5 text-sm" placeholder="Ketik kota asal..." autocomplete="off">
-                        <div id="origin-list" class="autocomplete-items hidden text-sm"></div>
+                        <select id="origin-select" onchange="updateOriginMarker()" class="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 border p-2.5 text-sm bg-white">
+                            <!-- Koordinat: Lat,Lon -->
+                            <option value="-6.221578872740604,106.43671928135052">Gudang Balaraja</option>
+                            <option value="-6.3148573114143,107.12709014604131">Gudang Cikarang (Indometal)</option>
+                            <option value="-6.261791808106416,107.03775025494502">Gudang Bekasi (Ex Toyogiri)</option>
+                        </select>
                     </div>
-                    <input type="hidden" id="origin-coords">
                 </div>
 
-                <!-- Input Tujuan -->
-                <div class="mb-5 relative">
-                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Lokasi Tujuan</label>
+                <!-- Input Tujuan 1 -->
+                <div class="mb-2 relative">
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Lokasi Tujuan 1 <span class="text-red-500">*</span></label>
                     <div class="relative">
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <i class="fas fa-map-pin text-red-600"></i>
                         </div>
-                        <input type="text" id="dest-input" class="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 border p-2.5 text-sm" placeholder="Ketik kota tujuan..." autocomplete="off">
-                        <div id="dest-list" class="autocomplete-items hidden text-sm"></div>
+                        <input type="text" id="dest-input-1" class="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 border p-2.5 text-sm" placeholder="Ketik kota tujuan pertama..." autocomplete="off">
+                        <div id="dest-list-1" class="autocomplete-items hidden text-sm"></div>
                     </div>
-                    <input type="hidden" id="dest-coords">
+                    <input type="hidden" id="dest-coords-1">
+                </div>
+
+                <!-- Input Tujuan 2 (Optional) -->
+                <div class="mb-5 relative">
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Lokasi Tujuan 2 (Opsional)</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-map-pin text-orange-500"></i>
+                        </div>
+                        <input type="text" id="dest-input-2" class="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 border p-2.5 text-sm" placeholder="Ketik kota tujuan kedua (jika ada)..." autocomplete="off">
+                        <div id="dest-list-2" class="autocomplete-items hidden text-sm"></div>
+                    </div>
+                    <input type="hidden" id="dest-coords-2">
                 </div>
 
                 <!-- Section Biaya -->
@@ -151,7 +167,7 @@
                             </div>
                             <input type="number" id="toll-total" class="pl-8 block w-full rounded border-gray-300 border p-2 text-sm bg-white" placeholder="0">
                         </div>
-                        <p class="text-[10px] text-gray-400 mt-1 text-right">*Masukkan 0 jika lewat jalur non-tol</p>
+                        <p class="text-[10px] text-gray-400 mt-1 text-right">*Input biaya tol estimasi keberangkatan saja</p>
                     </div>
 
                      <!-- Checkbox Opsi -->
@@ -170,7 +186,7 @@
                                 <input type="checkbox" id="round-trip" class="rounded text-blue-600 focus:ring-blue-500 h-4 w-4">
                                 <span class="text-sm font-medium text-gray-700">Pulang Pergi (PP)?</span>
                             </label>
-                            <span class="text-[10px] bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded border border-yellow-200 font-bold">x2 Jarak</span>
+                            <span class="text-[10px] bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded border border-yellow-200 font-bold">Loop Kembali</span>
                         </div>
                     </div>
                 </div>
@@ -190,8 +206,9 @@
                     <div id="map" class="rounded-lg h-full min-h-[300px]"></div>
                     <!-- Legend -->
                     <div class="absolute bottom-6 left-6 bg-white/90 p-2 rounded shadow text-xs z-[400] border border-gray-200">
-                        <div class="flex items-center gap-2 mb-1"><div class="w-3 h-3 rounded-full bg-green-600 border border-white shadow-sm"></div> Asal</div>
-                        <div class="flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-red-600 border border-white shadow-sm"></div> Tujuan</div>
+                        <div class="flex items-center gap-2 mb-1"><div class="w-3 h-3 rounded-full bg-blue-800 border border-white shadow-sm"></div> Asal (Gudang)</div>
+                        <div class="flex items-center gap-2 mb-1"><div class="w-3 h-3 rounded-full bg-red-600 border border-white shadow-sm"></div> Tujuan 1</div>
+                        <div class="flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-orange-500 border border-white shadow-sm"></div> Tujuan 2</div>
                     </div>
                 </div>
 
@@ -202,7 +219,7 @@
                             <h3 class="text-base font-bold text-gray-800">Rincian Perjalanan & Biaya</h3>
                             <p class="text-xs text-gray-500" id="res-fleet-name">-</p>
                         </div>
-                        <span class="text-xs text-gray-500 bg-white px-2 py-1 rounded border" id="trip-type-label">Estimasi Satu Kali Jalan</span>
+                        <span class="text-xs text-gray-500 bg-white px-2 py-1 rounded border font-bold text-blue-600" id="trip-type-label">Estimasi Satu Kali Jalan</span>
                     </div>
                     
                     <div class="p-6">
@@ -210,8 +227,9 @@
                         <div class="grid grid-cols-2 gap-4 mb-6 border-b border-gray-100 pb-4">
                             <!-- Jarak -->
                             <div class="text-center sm:text-left">
-                                <p class="text-xs text-gray-500 uppercase font-semibold tracking-wider">Jarak Tempuh</p>
+                                <p class="text-xs text-gray-500 uppercase font-semibold tracking-wider">Jarak Total</p>
                                 <p class="text-2xl font-bold text-gray-800" id="res-distance">0 km</p>
+                                <p class="text-[10px] text-gray-400" id="res-route-desc">-</p>
                             </div>
                             <!-- Waktu -->
                             <div class="text-center sm:text-right">
@@ -251,7 +269,7 @@
 
                         <!-- Info Gerbang Tol -->
                         <div id="toll-gate-info" class="bg-gray-100 rounded border border-gray-200 p-3 mb-4 text-sm hidden">
-                            <p class="text-xs font-bold text-gray-700 uppercase mb-2"><i class="fas fa-road mr-1"></i> Jalur Tol Terdeteksi (Satu Arah)</p>
+                            <p class="text-xs font-bold text-gray-700 uppercase mb-2"><i class="fas fa-road mr-1"></i> Rute Tol Terdeteksi</p>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
                                 <div class="flex items-center justify-between bg-white p-2 rounded border border-gray-200">
                                     <span class="text-gray-500 text-xs">Masuk via:</span>
@@ -285,8 +303,8 @@
             { id: 1, plate: "B 9374 PDE", code: "PST 1", ratioDivisor: 2, gol: "Golongan 3", overtime: 450000 },
             { id: 2, plate: "B 9963 PDE", code: "PST 2", ratioDivisor: 6, gol: "Golongan 2", overtime: 250000 },
             { id: 3, plate: "B 9098 PDF", code: "PST 3", ratioDivisor: 6, gol: "Golongan 2", overtime: 250000 },
-            { id: 4, plate: "B 9981 PDE", code: "PST 4", ratioDivisor: 2, gol: "Golongan 2", overtime: 250000 },
-            { id: 5, plate: "B 9169 PDF", code: "PST 5", ratioDivisor: 2, gol: "Golongan 2", overtime: 250000 },
+            { id: 4, plate: "B 9981 PDE", code: "PST 4", ratioDivisor: 3, gol: "Golongan 2", overtime: 250000 },
+            { id: 5, plate: "B 9169 PDF", code: "PST 5", ratioDivisor: 3, gol: "Golongan 2", overtime: 250000 },
             { id: 6, plate: "B 9201 PEA", code: "PST 6", ratioDivisor: 2, gol: "Golongan 5", overtime: 450000 }
         ];
 
@@ -319,7 +337,7 @@
         }
 
         // --- Konfigurasi Map Leaflet ---
-        const map = L.map('map').setView([-2.5489, 118.0149], 5);
+        const map = L.map('map').setView([-6.2000, 106.8166], 9); // View Jakarta Raya
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
@@ -328,24 +346,51 @@
 
         let routeLayer = null;
         let originMarker = null;
-        let destMarker = null;
+        let destMarker1 = null;
+        let destMarker2 = null;
 
         // Custom Icons
         const originIcon = L.icon({
-            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
             shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
             iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
         });
 
-        const destIcon = L.icon({
+        const destIcon1 = L.icon({
             iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
             shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
             iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
         });
 
+        const destIcon2 = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+        });
+
+        // Set Initial Origin Marker
+        updateOriginMarker();
+
+        function updateOriginMarker() {
+            const val = document.getElementById('origin-select').value;
+            const [lat, lon] = val.split(',');
+            const position = [lat, lon];
+
+            if (originMarker) map.removeLayer(originMarker);
+            originMarker = L.marker(position, {icon: originIcon}).addTo(map).bindPopup("<b>Asal</b><br>Gudang").openPopup();
+            
+            // Clear route if origin changes
+            if (routeLayer) {
+                map.removeLayer(routeLayer);
+                routeLayer = null;
+                document.getElementById('result-card').classList.add('hidden');
+            }
+            map.setView(position, 12);
+        }
+
         // --- Fungsi Pencarian Lokasi (Nominatim) ---
         let debounceTimer;
-        function setupAutocomplete(inputId, listId, coordsId, isOrigin) {
+        function setupAutocomplete(inputId, listId, coordsId, markerRef, iconRef, label) {
             const input = document.getElementById(inputId);
             const list = document.getElementById(listId);
             const coords = document.getElementById(coordsId);
@@ -374,7 +419,28 @@
                                         coords.value = `${item.lat},${item.lon}`;
                                         list.innerHTML = '';
                                         list.classList.add('hidden');
-                                        updateMarker(item.lat, item.lon, isOrigin);
+                                        
+                                        // Update Marker logic
+                                        const pos = [item.lat, item.lon];
+                                        
+                                        if (inputId === 'dest-input-1') {
+                                            if (destMarker1) map.removeLayer(destMarker1);
+                                            destMarker1 = L.marker(pos, {icon: destIcon1}).addTo(map).bindPopup("<b>Tujuan 1</b>").openPopup();
+                                        } else if (inputId === 'dest-input-2') {
+                                            if (destMarker2) map.removeLayer(destMarker2);
+                                            destMarker2 = L.marker(pos, {icon: destIcon2}).addTo(map).bindPopup("<b>Tujuan 2</b>").openPopup();
+                                        }
+
+                                        // Fit bounds including all active markers
+                                        const markers = [];
+                                        if (originMarker) markers.push(originMarker);
+                                        if (destMarker1) markers.push(destMarker1);
+                                        if (destMarker2 && coords.value) markers.push(destMarker2);
+                                        
+                                        if (markers.length > 1) {
+                                            const group = new L.featureGroup(markers);
+                                            map.fitBounds(group.getBounds().pad(0.1));
+                                        }
                                     });
                                     list.appendChild(div);
                                 });
@@ -391,40 +457,19 @@
             });
         }
 
-        setupAutocomplete('origin-input', 'origin-list', 'origin-coords', true);
-        setupAutocomplete('dest-input', 'dest-list', 'dest-coords', false);
+        setupAutocomplete('dest-input-1', 'dest-list-1', 'dest-coords-1', destMarker1, destIcon1, "Tujuan 1");
+        setupAutocomplete('dest-input-2', 'dest-list-2', 'dest-coords-2', destMarker2, destIcon2, "Tujuan 2");
 
-        function updateMarker(lat, lon, isOrigin) {
-            const position = [lat, lon];
-            if (isOrigin) {
-                if (originMarker) map.removeLayer(originMarker);
-                originMarker = L.marker(position, {icon: originIcon}).addTo(map).bindPopup("Asal").openPopup();
-            } else {
-                if (destMarker) map.removeLayer(destMarker);
-                destMarker = L.marker(position, {icon: destIcon}).addTo(map).bindPopup("Tujuan").openPopup();
-            }
-
-            if (originMarker && destMarker) {
-                const group = new L.featureGroup([originMarker, destMarker]);
-                map.fitBounds(group.getBounds().pad(0.1));
-            } else {
-                map.setView(position, 10);
-            }
-            
-            if (routeLayer) {
-                map.removeLayer(routeLayer);
-                routeLayer = null;
-                document.getElementById('result-card').classList.add('hidden');
-            }
-        }
 
         // --- Logic Perhitungan ---
         async function calculateCost() {
-            const originVal = document.getElementById('origin-coords').value;
-            const destVal = document.getElementById('dest-coords').value;
+            const originVal = document.getElementById('origin-select').value;
+            const destVal1 = document.getElementById('dest-coords-1').value;
+            const destVal2 = document.getElementById('dest-coords-2').value;
+            
             const tollInput = parseFloat(document.getElementById('toll-total').value) || 0;
             const useOvertime = document.getElementById('include-overtime').checked;
-            const isRoundTrip = document.getElementById('round-trip').checked; // Check PP Status
+            const isRoundTrip = document.getElementById('round-trip').checked; 
             
             const btn = document.getElementById('btn-calculate');
             const errorMsg = document.getElementById('error-msg');
@@ -441,8 +486,8 @@
                 return;
             }
 
-            if (!originVal || !destVal) {
-                errorMsg.textContent = "Mohon pilih lokasi asal dan tujuan dari daftar.";
+            if (!destVal1) {
+                errorMsg.textContent = "Mohon isi Lokasi Tujuan 1.";
                 errorMsg.classList.remove('hidden');
                 return;
             }
@@ -452,11 +497,35 @@
             btn.disabled = true;
 
             try {
-                const [lat1, lon1] = originVal.split(',');
-                const [lat2, lon2] = destVal.split(',');
+                // Parse Coordinates (Lat, Lon)
+                const [latO, lonO] = originVal.split(',');
+                const [latD1, lonD1] = destVal1.split(',');
+                
+                // Build Waypoints for OSRM (Lon,Lat)
+                let waypoints = [];
+                waypoints.push(`${lonO},${latO}`); // Asal
+                waypoints.push(`${lonD1},${latD1}`); // Tujuan 1
+                
+                let hasDest2 = false;
+                if (destVal2) {
+                    const [latD2, lonD2] = destVal2.split(',');
+                    waypoints.push(`${lonD2},${latD2}`); // Tujuan 2
+                    hasDest2 = true;
+                }
 
-                // Request OSRM
-                const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=full&geometries=geojson&steps=true`;
+                // LOGIKA PP: Jika PP, tambahkan Asal sebagai titik akhir
+                // Jika 2 destinasi: Asal -> D1 -> D2 -> Asal
+                // Jika 1 destinasi: Asal -> D1 -> Asal
+                if (isRoundTrip) {
+                    waypoints.push(`${lonO},${latO}`);
+                    document.getElementById('trip-type-label').textContent = "Estimasi Pulang Pergi (Loop)";
+                } else {
+                    document.getElementById('trip-type-label').textContent = hasDest2 ? "Multitrip (1 Arah)" : "Estimasi Satu Kali Jalan";
+                }
+
+                // Construct URL
+                const coordinatesString = waypoints.join(';');
+                const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordinatesString}?overview=full&geometries=geojson&steps=true`;
 
                 const response = await fetch(osrmUrl);
                 const data = await response.json();
@@ -468,26 +537,27 @@
                 const route = data.routes[0];
                 let distanceKm = route.distance / 1000;
                 let durationSeconds = route.duration;
-                let tollTotal = tollInput;
-
-                // --- LOGIKA PULANG PERGI (PP) ---
-                if (isRoundTrip) {
-                    distanceKm *= 2;        // Jarak x2
-                    durationSeconds *= 2;   // Waktu x2
-                    tollTotal *= 2;         // Biaya Tol x2 (Asumsi input user adalah satu arah)
-                    document.getElementById('trip-type-label').textContent = "Estimasi Pulang Pergi (PP)";
-                } else {
-                    document.getElementById('trip-type-label').textContent = "Estimasi Satu Kali Jalan";
-                }
+                
+                // Hitung Tol Total
+                // Jika PP dicentang, kita asumsikan input user adalah biaya 1 arah, jadi kita kali 2.
+                // Jika user pintar, dia mungkin input total, tapi standar kalkulator biasanya input 1 arah.
+                // Mengingat rute A->B->C->A, tol pulang (C->A) mungkin beda. 
+                // Untuk keamanan estimasi, kita kali 2 jika PP.
+                let tollTotal = isRoundTrip ? (tollInput * 2) : tollInput;
 
                 // --- INFO GATE ---
                 let entryGate = "-";
                 let exitGate = "-";
                 let foundToll = false;
 
-                if (route.legs && route.legs[0].steps) {
-                    const steps = route.legs[0].steps;
-                    const tollSteps = steps.filter(s => s.name && s.name.toLowerCase().includes('tol'));
+                if (route.legs) {
+                    // Collect all steps from all legs
+                    let allSteps = [];
+                    route.legs.forEach(leg => {
+                        if(leg.steps) allSteps = allSteps.concat(leg.steps);
+                    });
+
+                    const tollSteps = allSteps.filter(s => s.name && s.name.toLowerCase().includes('tol'));
 
                     if (tollSteps.length > 0) {
                         foundToll = true;
@@ -496,11 +566,11 @@
                     }
                 }
 
-                // 1. Hitung BBM (Jarak sudah disesuaikan jika PP)
+                // 1. Hitung BBM (Jarak sudah real dari Loop OSRM)
                 const fuelVolume = distanceKm / selectedFleet.ratioDivisor;
                 const fuelCost = fuelVolume * FIXED_FUEL_PRICE;
 
-                // 2. Biaya Lembur (Tetap sama walaupun PP)
+                // 2. Biaya Lembur (Tetap sama)
                 const overtimeCost = useOvertime ? selectedFleet.overtime : 0;
                 const overtimeStatus = useOvertime ? "Aktif" : "Tidak Aktif";
 
@@ -518,6 +588,12 @@
                 document.getElementById('res-fleet-name').textContent = `Armada: ${selectedFleet.plate} (${selectedFleet.code})`;
                 document.getElementById('res-distance').textContent = distanceKm.toLocaleString('id-ID', {maximumFractionDigits: 1}) + " km";
                 document.getElementById('res-duration').textContent = durationText;
+                
+                // Desc route
+                let routeDesc = "Gudang → Tjn 1";
+                if (hasDest2) routeDesc += " → Tjn 2";
+                if (isRoundTrip) routeDesc += " → Gudang";
+                document.getElementById('res-route-desc').textContent = routeDesc;
                 
                 document.getElementById('res-fuel-vol').textContent = fuelVolume.toLocaleString('id-ID', {maximumFractionDigits: 1});
                 document.getElementById('res-fuel-cost').textContent = "Rp " + fuelCost.toLocaleString('id-ID', {maximumFractionDigits: 0});
@@ -538,8 +614,8 @@
                     document.getElementById('gate-exit').textContent = exitGate;
                 } else if (tollInput > 0) {
                     document.getElementById('toll-gate-info').classList.remove('hidden');
-                    document.getElementById('gate-entry').textContent = "Terdeteksi Manual";
-                    document.getElementById('gate-exit').textContent = "Terdeteksi Manual";
+                    document.getElementById('gate-entry').textContent = "Estimasi Manual";
+                    document.getElementById('gate-exit').textContent = "Estimasi Manual";
                 }
 
                 document.getElementById('result-card').classList.remove('hidden');
